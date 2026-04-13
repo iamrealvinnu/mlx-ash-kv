@@ -16,7 +16,7 @@ def generate_triage_data(token_count, error_rate, severity_score, trigger_compac
     t = np.arange(total_tokens)
     for mu in poisoned_indices:
         dist_sq = (t - mu)**2
-        penalty = np.exp(-dist_sq / (2 * sigma**2 + 1e-6))
+        penalty = np.exp(-dist_sq / (2 * sigma**2))
         valid = (t >= mu) & (t > 0)
         
         # Apply penalty ONLY to reasoning heads (0-15)

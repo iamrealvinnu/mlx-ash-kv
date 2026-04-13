@@ -1,40 +1,21 @@
----
-title: MLX-ASH-KV
-emoji: ⚡
-colorFrom: green
-colorTo: gray
-sdk: gradio
-sdk_version: 5.16.0
-app_file: app.py
-pinned: false
-license: apache-2.0
----
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
 
-# ⚡️ MLX-ASH-KV: Asynchronous Self-Healing Cache
+[project]
+name = "mlx-ash-kv"
+version = "6.0.0"
+description = "ASH-KV: Head-Specific Causal Pruning and Entropy-Driven Context Compaction for Apple Silicon."
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "mlx>=0.18.0",
+    "rich",
+    "numpy",
+    "coremltools",
+    "torch"
+]
 
-[![Hugging Face Spaces](https://img.shields.io/badge/🤗%20Hugging%20Face-Live%20Dashboard-emerald)](https://huggingface.co/spaces/guptavinay/mlx-ash-kv)
-[![GitHub](https://img.shields.io/badge/GitHub-Repository-slate)](https://github.com/iamrealvinnu/mlx-ash-kv)
-
-**ASH-KV v6.0.0** is an enterprise-grade memory infrastructure for Large Language Models on Apple Silicon. It introduces **Head-Specific Causal Pruning** and **Entropy-Driven Context Compaction (EDCC)**, offloading verification logic to the Asynchronous Verification Daemon (AVD) on the Apple Neural Engine.
-
----
-
-## 🔬 Breakthrough: Head-Specific Pruning & EDCC (Phase 4)
-
-Traditional LLM inference assumes all historical tokens possess equal cognitive value. ASH-KV v6.0.0 implements **Temporal Utility Discounting**.
-
-### 🧠 The AVD and Multi-Head Splicing
-1. **Asynchronous Verification Daemon (AVD):** A hardware-isolated monitor running on the ANE continuously evaluates Unified Memory chunks for logical drift.
-2. **Head-Specific Gaussian Penalties:** When drift is detected, the AVD applies a `[num_heads, seq_len]` Metal mask. Factual hallucinations are surgically penalized *only* in the logical reasoning heads, preserving syntactic flow in the linguistic heads.
-3. **Entropy-Driven Context Compaction (EDCC):** During generation pauses, an atomic, in-place `mx.take` operation physically deallocates low-entropy nodes from RAM, preventing Out-Of-Memory (OOM) states and creating a theoretically infinite context window.
-4. **Strict Metal Serialization:** All context mutations are synced behind thread-safe locks to prevent Metal command-buffer collisions.
-
----
-## 📊 Hardware Receipts
-- **Verification Engine:** Apple Neural Engine (ANE).
-- **Correction Mode:** Head-Specific Temporal Rollback + EDCC.
-- **GPU Overhead:** `0.00%` during verification cycles.
-- **Memory Protocol:** Zero-copy Unified Memory handoff.
-
-## 🛡️ License
-Apache 2.0. Built for the future of agentic reasoning on Apple Silicon.
+[tool.setuptools]
+packages = ["mlx_ash_kv"]
+package-dir = {"" = "src"}
