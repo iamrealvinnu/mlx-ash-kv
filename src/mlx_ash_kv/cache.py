@@ -12,10 +12,7 @@ from typing import Tuple, List, Optional, Dict
 
 class ASHCache:
     """
-    Asynchronous Self-Healing Cache (ASH-KV) v4.1.1 (Metal-Safe Edition).
-    
-    Implements 'Temporal Rollback' with hardware-isolated ANE verification.
-    Uses strict command-stream serialization to prevent Metal buffer collisions.
+    Asynchronous Self-Healing Cache (ASH-KV) v5.0.2 (High-Entropy Patch).
     """
     def __init__(self, critic_model_path: str = None):
         self.keys: Optional[mx.array] = None
@@ -33,6 +30,7 @@ class ASHCache:
 
     @property
     def seq_len(self) -> int:
+        # Atomic read of sequence length
         return self.keys.shape[2] if self.keys is not None else 0
 
     @staticmethod
@@ -82,7 +80,6 @@ class ASHCache:
             return self.keys, self.values, self.active_mask
 
     def sync_eval(self, *arrays):
-        """Thread-safe evaluation to prevent Metal command buffer collisions."""
         with self._lock:
             mx.eval(*arrays)
 
@@ -97,21 +94,60 @@ class ASHCache:
         if not self.critic_model or self.keys is None:
             return None
             
-        seq_len = self.keys.shape[2]
-        if start_idx + chunk_size > seq_len:
-            return None
-            
         with self._lock:
-            # Atomic extraction and evaluation to lock Metal encoder
+            seq_len = self.keys.shape[2]
+            if start_idx + chunk_size > seq_len:
+                return None
+            
             chunk = self.keys[0, 0, start_idx:start_idx+chunk_size, :].astype(mx.float32)
-            mx.eval(chunk) # Force encoding and commit before releasing lock
+            mx.eval(chunk)
             np_chunk = np.array(chunk).reshape(1, chunk_size, -1)
             
             if np_chunk.shape[2] != 128:
                 np_chunk = np.pad(np_chunk, ((0,0), (0,0), (0, 128 - np_chunk.shape[2])))[:, :, :128]
 
-        # Prediction happens outside lock (ANE is independent silicon)
         prediction = self.critic_model.predict({"hidden_states": np_chunk})
         output_key = list(prediction.keys())[0] 
-        severity = float(prediction[output_key][0])
-        return severity
+        return float(prediction[output_key][0])
+
+    def compact_manifold(self, threshold: float = -9000.0) -> int:
+        """
+        Optimized Compaction: Skips processing if no strikes exist.
+        """
+        # OPTIMIZATION 1: Quick-exit if no strikes to process
+        if not self.strikes:
+            return 0
+
+        with self._lock:
+            if self.keys is None or self.active_mask is None:
+                return 0
+                
+            seq_len = self.keys.shape[2]
+            
+            # Identify keep indices
+            flat_mask = mx.flatten(self.active_mask)
+            keep_condition = flat_mask > threshold
+            keep_indices = mx.nonzero(keep_condition)[0]
+            
+            # Trigger sync to get the actual token count from GPU
+            mx.eval(keep_indices)
+            new_seq_len = keep_indices.size
+            tokens_freed = seq_len - new_seq_len
+            
+            if tokens_freed <= 0:
+                # Manifold is actually healthy (false alarm), cleanup and exit
+                self.strikes.clear()
+                return 0 
+                
+            # Perform physical slice
+            self.keys = mx.take(self.keys, keep_indices, axis=2)
+            self.values = mx.take(self.values, keep_indices, axis=2)
+            
+            # Reset state for the new contiguous block
+            self.strikes.clear()
+            self.active_mask = mx.zeros((1, 1, 1, new_seq_len), dtype=mx.float16)
+            
+            # Commit to hardware
+            mx.eval(self.keys, self.values)
+            
+            return tokens_freed

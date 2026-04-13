@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mlx-ash-kv"
-version = "4.1.1"
-description = "Asynchronous Self-Healing KV Cache (ASH-KV) with ANE-Daemon Hardware Parallelism."
+version = "5.0.2"
+description = "Asynchronous Self-Healing KV Cache (ASH-KV) with High-Entropy Semantic Compaction for Apple Silicon."
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
