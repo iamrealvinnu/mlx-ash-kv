@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mlx-ash-kv"
-version = "6.0.0"
-description = "ASH-KV: Head-Specific Causal Pruning and Entropy-Driven Context Compaction for Apple Silicon."
+version = "7.0.0"
+description = "ASH-KV: Multi-Agent Memory Stitching, Head-Specific Pruning, and EDCC for Apple Silicon."
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [

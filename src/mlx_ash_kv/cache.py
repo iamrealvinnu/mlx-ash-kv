@@ -13,10 +13,10 @@ from typing import Tuple, List, Optional, Dict
 
 class ASHCache:
     """
-    Asynchronous Self-Healing Cache (ASH-KV) v6.0.0 (Multi-Head Pruning Edition).
+    Asynchronous Self-Healing Cache (ASH-KV) v7.0.0 (Hive Mind Edition).
     
-    Implements Head-Specific Causal Pruning and Entropy-Driven Context Compaction (EDCC)
-    with hardware-isolated verification via the Asynchronous Verification Daemon (AVD).
+    Implements Cross-Agent Memory Stitching, Head-Specific Causal Pruning, 
+    and Entropy-Driven Context Compaction (EDCC).
     """
     def __init__(self, critic_model_path: str = None, num_heads: int = 32):
         self.keys: Optional[mx.array] = None
@@ -41,7 +41,6 @@ class ASHCache:
 
     def _generate_head_specific_mask(self, seq_len: int) -> mx.array:
         """Generates a 4D mask applying Gaussian penalties strictly to targeted attention heads."""
-        # Base mask: (1, num_heads, 1, seq_len)
         mask = np.zeros((1, self.num_heads, 1, seq_len), dtype=np.float16)
         if not self.strikes:
             return mx.array(mask)
@@ -52,15 +51,11 @@ class ASHCache:
             sigma = strike["sigma"]
             target_heads = strike["heads"]
 
-            # Causal Gaussian Decay
             dist_sq = (t - mu)**2
             penalty = -10000.0 * np.exp(-dist_sq / (2 * sigma**2 + 1e-6))
-            
-            # Apply constraints (Causal & Sink Preservation)
             valid = (t >= mu) & (t > 0)
             penalty = np.where(valid, penalty, 0.0)
 
-            # Apply ONLY to targeted heads
             for h in target_heads:
                 mask[0, h, 0, :] = np.minimum(mask[0, h, 0, :], penalty)
 
@@ -91,12 +86,11 @@ class ASHCache:
         """Asynchronous API for the AVD to flag logical drift on specific heads."""
         with self._lock:
             sigma = 1.0 + (severity_score * 19.0)
-            # Default to penalizing the first 16 heads (Logical/Reasoning heads) if none specified
             heads = target_heads if target_heads is not None else list(range(self.num_heads // 2))
             
             if not any(s["index"] == index for s in self.strikes):
                 self.strikes.append({"index": float(index), "sigma": sigma, "heads": heads})
-                self.active_mask = None # Trigger mask recreation
+                self.active_mask = None 
 
     def analyze_manifold_chunk(self, start_idx: int, chunk_size: int = 128) -> Optional[float]:
         if not self.critic_model or self.keys is None:
@@ -128,13 +122,11 @@ class ASHCache:
                 return 0
                 
             seq_len = self.keys.shape[2]
-            # We compact tokens that are severely penalized across ALL reasoning heads
             reasoning_heads_mask = self.active_mask[0, :self.num_heads // 2, 0, :]
             max_penalty_across_heads = mx.max(reasoning_heads_mask, axis=0)
             
             mx.eval(max_penalty_across_heads)
-            keep_condition = max_penalty_across_heads > threshold
-            keep_indices = mx.nonzero(keep_condition)[0]
+            keep_indices = mx.nonzero(max_penalty_across_heads > threshold)[0]
             mx.eval(keep_indices)
             
             new_seq_len = keep_indices.size
@@ -151,3 +143,26 @@ class ASHCache:
             self.active_mask = None
             mx.eval(self.keys, self.values)
             return tokens_freed
+
+    def export_manifold(self) -> Tuple[Optional[mx.array], Optional[mx.array], Optional[mx.array]]:
+        """
+        Phase 5: Cross-Agent Memory Stitching (Export).
+        Safely extracts the current physical memory state for zero-copy handoff.
+        """
+        with self._lock:
+            return self.keys, self.values, self.active_mask
+
+    def mount_manifold(self, external_keys: mx.array, external_values: mx.array, external_mask: Optional[mx.array] = None) -> None:
+        """
+        Phase 5: Cross-Agent Memory Stitching (Mount).
+        Instantly overwrites this agent's memory with an external physical manifold.
+        """
+        with self._lock:
+            if external_keys.shape[1] != self.num_heads:
+                raise ValueError(f"[SYSTEM FATAL] Manifold mismatch: Expected {self.num_heads} heads, got {external_keys.shape[1]}")
+            
+            self.keys = external_keys
+            self.values = external_values
+            self.active_mask = external_mask
+            self.strikes.clear()
+            mx.eval(self.keys, self.values)
