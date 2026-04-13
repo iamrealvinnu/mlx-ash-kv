@@ -1,19 +1,17 @@
 """
-Diagnostic TUI and Integration Benchmark for ASH-KV (v3.0.0).
+Diagnostic TUI and Integration Benchmark for ASH-KV (v4.0.0).
 
 Provides a brutalist, high-density Terminal UI to visualize the 
 Asynchronous Self-Healing Key-Value Cache in action.
 
-Metrics tracked:
-1. Unified Memory Allocation Limits
-2. Tensor Shapes
-3. Real-time Causal Corrections (The 'DNA Barcode' Excision)
+Updates: Visualizes Phase 1 Gaussian Decay (Temporal Rollback).
 """
 
 import mlx.core as mx
 import time
 import threading
 import random
+import math
 from collections import deque
 from mlx_ash_kv.cache import ASHCache
 
@@ -40,31 +38,46 @@ class DiagnosticMonitor:
         self.is_running = True
         
     def generate_barcode(self) -> Group:
-        """Renders the attention manifold as a dense 1D spectral barcode."""
+        """Renders the attention manifold as a dense 1D spectral barcode with Gaussian gradients."""
         blocks = 120  # Console width target
         tokens_per_block = TARGET_TOKENS / blocks
         
         barcode_lines = []
         
-        # We draw a thick band of 5 lines to make it visually imposing
+        # Pre-calculate the mask for visualization if possible
+        # Since we want to show the gradient, we simulate the Gaussian effect here
         for _ in range(5):
             line = Text()
             for i in range(blocks):
                 block_start = i * tokens_per_block
-                block_end = (i + 1) * tokens_per_block
                 
                 if block_start > self.current_token:
                     line.append(" ", style="on black")
                     continue
-                    
-                # Check if any excised token falls in this block
-                excised_in_block = any(block_start <= idx < block_end for idx in self.cache.poisoned_indices)
                 
-                if excised_in_block:
-                    # Pure black empty space for excised regions
-                    line.append(" ", style="on black")
+                if block_start == 0:
+                    line.append("█", style="bold green") # BOS Sink
+                    continue
+
+                # Calculate max penalty for this block across all strikes
+                max_penalty = 0.0
+                for strike in self.cache.strikes:
+                    mu = strike["index"]
+                    sigma = strike["sigma"]
+                    if block_start >= mu:
+                        dist_sq = (block_start - mu)**2
+                        penalty = math.exp(-dist_sq / (2 * sigma**2))
+                        max_penalty = max(max_penalty, penalty)
+                
+                if max_penalty > 0.95:
+                    line.append(" ", style="on black") # Full excision
+                elif max_penalty > 0.1:
+                    # Gradient representation using grayscale intensity
+                    # 0.1 to 0.95 penalty -> brighter to darker
+                    shade = int(255 * (1.0 - max_penalty))
+                    line.append("█", style=f"rgb({shade},{shade},{shade})")
                 else:
-                    # Dense white/grey structure for healthy context
+                    # Healthy context
                     intensity = random.choice(["bold white", "white", "bright_white"])
                     line.append("█", style=intensity)
             barcode_lines.append(Align.center(line))
@@ -72,7 +85,7 @@ class DiagnosticMonitor:
         return Group(
             Text("\n\n"),
             *barcode_lines,
-            Text("\n[ 1D SPECTRAL ATTENTION MANIFOLD ]", style="bold white", justify="center")
+            Text("\n[ 1D SPECTRAL ATTENTION MANIFOLD // GAUSSIAN DECAY ENABLED ]", style="bold white", justify="center")
         )
 
     def generate_telemetry(self) -> Table:
@@ -90,14 +103,13 @@ class DiagnosticMonitor:
         table.add_row("Manifold Depth", f"{self.current_token} / {TARGET_TOKENS} tokens")
         table.add_row("Throughput", f"{tps:.2f} tok/s")
         table.add_row("Unified Memory", f"{mem_mb:.2f} MB Allocated")
-        table.add_row("Critic Overhead", "0.00 ms (Asynchronous)")
-        table.add_row("Mutation Latency", "< 0.1 ms (Metal Fused)")
-        table.add_row("Mask Value", "-10000.0 (Softmax Zero)")
+        table.add_row("Active Strikes", f"{len(self.cache.strikes)}")
+        table.add_row("Correction Mode", "Gaussian Causal Decay (V4.0)")
+        table.add_row("Sink Preservation", "Index 0 [bos] Locked")
         
         return table
 
     def generate_logs(self) -> Group:
-        # We use from_markup to allow rich text tags in the string logs
         log_texts = [Text.from_markup(log) for log in self.excision_log]
         return Group(*log_texts)
 
@@ -116,12 +128,12 @@ class DiagnosticMonitor:
             Layout(name="logs")
         )
         
-        header_text = Text(" ASH-KV V3.0.0 // ACTIVE DIAGNOSTIC MONITOR ", style="bold black on white", justify="center")
-        layout["header"].update(Panel(header_text, style="white"))
+        header_text = Text(" ASH-KV V4.0.0 // TEMPORAL ROLLBACK MONITOR ", style="bold black on cyan", justify="center")
+        layout["header"].update(Panel(header_text, style="cyan"))
         
-        layout["left"]["telemetry"].update(Panel(self.generate_telemetry(), title="[bold]SYSTEM TELEMETRY[/]", border_style="white"))
-        layout["left"]["logs"].update(Panel(self.generate_logs(), title="[bold]GHOST CRITIC INTERCEPTS[/]", border_style="white"))
-        layout["right"].update(Panel(self.generate_barcode(), title="[bold]TENSOR MANIFOLD STATUS[/]", border_style="white"))
+        layout["left"]["telemetry"].update(Panel(self.generate_telemetry(), title="[bold]SYSTEM TELEMETRY[/]", border_style="cyan"))
+        layout["left"]["logs"].update(Panel(self.generate_logs(), title="[bold]GHOST CRITIC INTERCEPTS[/]", border_style="cyan"))
+        layout["right"].update(Panel(self.generate_barcode(), title="[bold]TENSOR MANIFOLD STATUS[/]", border_style="cyan"))
         
         return layout
 
@@ -135,38 +147,35 @@ def primary_generation_loop(monitor: DiagnosticMonitor):
         
         k, v, mask = monitor.cache.update(new_k, new_v)
         
-        # Periodic eval to force Metal execution and simulate real workload
+        # Periodic eval to force Metal execution
         if i % 100 == 0:
             mx.eval(k, v, mask)
             
         monitor.current_token = i
-        time.sleep(0.003) # Simulated LLM forward pass time
+        time.sleep(0.003)
         
     monitor.is_running = False
 
 def ghost_critic_loop(monitor: DiagnosticMonitor):
-    last_excised_idx = -1
-    
     while monitor.is_running and monitor.current_token < TARGET_TOKENS:
-        time.sleep(0.3)
+        time.sleep(0.5)
         
         current_len = monitor.cache.seq_len
-        # Excision logic: Simulate critic firing randomly on long context
-        if current_len > 200 and random.random() < 0.4:
+        if current_len > 200 and random.random() < 0.3:
             target_idx = current_len - random.randint(50, 150)
             
-            if target_idx != last_excised_idx and target_idx not in monitor.cache.poisoned_indices:
-                monitor.cache.flag_hallucination(target_idx)
-                timestamp = time.strftime("%H:%M:%S.000")
-                # Highlight the strike in clinical cyan/blue (No emojis)
-                log_entry = f"[{timestamp}] CRITIC STRIKE @ IDX {target_idx:04d} -> [bold cyan]-INF MASK INJECTED[/]"
+            # Severity score: 0.1 (surgical) to 0.9 (broad)
+            severity = random.uniform(0.1, 0.9)
+            
+            if target_idx > 0 and not any(s["index"] == target_idx for s in monitor.cache.strikes):
+                monitor.cache.flag_hallucination(target_idx, severity_score=severity)
+                timestamp = time.strftime("%H:%M:%S")
+                log_entry = f"[{timestamp}] STRIKE @ {target_idx:04d} | SEV: {severity:.2f} -> [bold cyan]GAUSSIAN RADIUS APPLIED[/]"
                 monitor.excision_log.append(log_entry)
-                last_excised_idx = target_idx
 
 def run_integration_benchmark():
     monitor = DiagnosticMonitor()
-    monitor.excision_log.append("[SYSTEM] GHOST CRITIC DAEMON INITIALIZED.")
-    monitor.excision_log.append("[SYSTEM] PRIMARY GENERATION LOOP STARTED.")
+    monitor.excision_log.append("[SYSTEM] GHOST CRITIC V4.0 (TEMPORAL) INITIALIZED.")
     
     gen_thread = threading.Thread(target=primary_generation_loop, args=(monitor,))
     critic_thread = threading.Thread(target=ghost_critic_loop, args=(monitor,))
@@ -179,11 +188,6 @@ def run_integration_benchmark():
             while monitor.is_running:
                 live.update(monitor.make_layout())
                 time.sleep(0.05)
-                
-            monitor.excision_log.append("\n[bold white][SYSTEM] MANIFOLD GENERATION COMPLETE.[/]")
-            live.update(monitor.make_layout())
-            time.sleep(3)
-            
     except KeyboardInterrupt:
         monitor.is_running = False
         
