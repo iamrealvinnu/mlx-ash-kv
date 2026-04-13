@@ -1,4 +1,5 @@
 mlx>=0.18.0
+mlx-lm
 gradio
 plotly
 numpy
