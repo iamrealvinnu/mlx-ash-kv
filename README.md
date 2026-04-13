@@ -1,3 +1,15 @@
+---
+title: MLX-ASH-KV
+emoji: ⚡
+colorFrom: green
+colorTo: gray
+sdk: gradio
+sdk_version: 5.16.0
+app_file: app.py
+pinned: false
+license: apache-2.0
+---
+
 # ⚡️ MLX-ASH-KV: Asynchronous Self-Healing Cache
 
 [![Hugging Face Spaces](https://img.shields.io/badge/🤗%20Hugging%20Face-Live%20Dashboard-emerald)](https://huggingface.co/spaces/guptavinay/mlx-ash-kv)
