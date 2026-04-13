@@ -3,3 +3,5 @@ gradio
 plotly
 numpy
 rich
+coremltools
+torch

@@ -1,50 +1,35 @@
 """
 @file cache.py
 @brief Core implementation of the Asynchronous Self-Healing Cache (ASH-KV).
-
-ASH-KV is a specialized KV-cache manager designed for high-stakes reasoning loops.
-It enables real-time self-correction by allowing an asynchronous verification
-process (the 'Ghost Critic') to surgically excise hallucinated nodes from the
-attention manifold.
-
-Architecture: Asynchronous Mask Injection via @mx.compile.
-Performance: Zero-latency, non-blocking attention mutation on the Metal backend.
-
-License: Apache 2.0 (v3.0.0 Release)
 """
 
 import mlx.core as mx
 import threading
+import math
 import numpy as np
+import coremltools as ct
 from typing import Tuple, List, Optional, Dict
 
 class ASHCache:
     """
-    Asynchronous Self-Healing Cache (ASH-KV) v4.0.0.
+    Asynchronous Self-Healing Cache (ASH-KV) v4.1.1 (Metal-Safe Edition).
     
-    Implements 'Temporal Rollback' via Gaussian-decay attention masking.
-    
-    The Problem: When a hallucination occurs, subsequent tokens generated before 
-    the Ghost Critic catches the error are 'orphaned' (causally contaminated).
-    
-    The Solution: Instead of a binary mask (which creates a harsh logical cliff) 
-    or a physical memory rollback (which incurs O(N) latency), ASH-KV applies a 
-    Soft Causal Correction. We project a Gaussian gravity well onto the attention 
-    manifold. The hallucinated node is hit with a -10000.0 penalty, and subsequent 
-    orphaned tokens receive a decaying penalty based on their proximity to the strike.
-    
-    Safety: The <bos> token (Index 0) is strictly preserved as an Attention Sink 
-    to absorb displaced probability mass and prevent generation collapse.
+    Implements 'Temporal Rollback' with hardware-isolated ANE verification.
+    Uses strict command-stream serialization to prevent Metal buffer collisions.
     """
-    def __init__(self):
+    def __init__(self, critic_model_path: str = None):
         self.keys: Optional[mx.array] = None
         self.values: Optional[mx.array] = None
-
-        # Stores (index, sigma) for each strike
         self.strikes: List[Dict[str, float]] = []
-        
         self.active_mask: Optional[mx.array] = None
         self._lock = threading.Lock()
+        
+        self.critic_model = None
+        if critic_model_path:
+            self.critic_model = ct.models.MLModel(
+                critic_model_path, 
+                compute_units=ct.ComputeUnit.CPU_AND_NE
+            )
 
     @property
     def seq_len(self) -> int:
@@ -53,55 +38,26 @@ class ASHCache:
     @staticmethod
     @mx.compile
     def _generate_immune_mask_compiled(seq_len: int, strike_indices: mx.array, strike_sigmas: mx.array) -> mx.array:
-        """
-        Generates a Gaussian-decay attention mask fused in Metal.
-        
-        Math: 
-        For each token i and strike j at mu_j:
-        penalty = -10000 * exp(-(i - mu_j)^2 / (2 * sigma_j^2))
-        
-        Constraints:
-        1. Causal: i >= mu_j (No look-back strikes)
-        2. Sink Preservation: i > 0 (Never penalize <bos>)
-        """
-        # (1, 1, 1, seq_len)
         mask = mx.zeros((1, 1, 1, seq_len), dtype=mx.float16)
-        
         if strike_indices.size == 0:
             return mask
 
-        # Index manifold: (seq_len,)
         t = mx.arange(seq_len, dtype=mx.float16)
-        
-        # Expand for broadcasting: (num_strikes, seq_len)
         t_expanded = mx.broadcast_to(t[None, :], (strike_indices.size, seq_len))
         mu = strike_indices[:, None]
         sigma = strike_sigmas[:, None]
 
-        # Calculate squared distance for Gaussian
-        # Only apply to tokens >= mu (causal decay)
         dist_sq = mx.square(t_expanded - mu)
-        
-        # Gaussian penalty: -10000 * exp(-dist_sq / (2 * sigma^2))
-        # Note: We use a large negative value to force softmax to zero
         penalty_val = -10000.0
         exponent = -dist_sq / (2 * mx.square(sigma) + 1e-6)
         
-        # Compute individual strike masks
         strike_masks = mx.exp(exponent) * penalty_val
-        
-        # Apply constraints:
-        # 1. i >= mu
-        # 2. i > 0 (Attention Sink Preservation)
         causal_mask = (t_expanded >= mu)
         sink_mask = (t_expanded > 0)
-        
         valid_strikes = mx.logical_and(causal_mask, sink_mask)
+        
         strike_masks = mx.where(valid_strikes, strike_masks, 0.0)
-
-        # Aggregate strikes: Take the minimum (most severe penalty) at each index
         mask = mx.min(strike_masks, axis=0, keepdims=True)
-        # Reshape to 4D for transformer compatibility
         return mask.reshape(1, 1, 1, seq_len)
 
     def update(self, new_k: mx.array, new_v: mx.array) -> Tuple[mx.array, mx.array, mx.array]:
@@ -125,27 +81,37 @@ class ASHCache:
 
             return self.keys, self.values, self.active_mask
 
-    def flag_hallucination(self, index: int, severity_score: float = 0.5) -> None:
-        """
-        Asynchronous API for the Ghost Critic to flag logical drift.
-        
-        Args:
-            index: The exact token position of the hallucination.
-            severity_score: A float between 0.0 (minor syntax error) and 1.0 
-                            (catastrophic logic failure). This mathematically 
-                            defines the sigma (spread) of the Gaussian penalty 
-                            applied to the subsequent orphaned tokens.
-        """
+    def sync_eval(self, *arrays):
+        """Thread-safe evaluation to prevent Metal command buffer collisions."""
         with self._lock:
-            # Map severity 0.0-1.0 to Sigma 1.0-20.0 (Radius of influence)
+            mx.eval(*arrays)
+
+    def flag_hallucination(self, index: int, severity_score: float = 0.5) -> None:
+        with self._lock:
             sigma = 1.0 + (severity_score * 19.0)
-            
-            # Check if we already have a strike at this index; if so, update to max severity
-            existing = next((s for s in self.strikes if s["index"] == index), None)
-            if existing:
-                existing["sigma"] = max(existing["sigma"], sigma)
-            else:
+            if not any(s["index"] == index for s in self.strikes):
                 self.strikes.append({"index": float(index), "sigma": sigma})
+                self.active_mask = None
+
+    def analyze_manifold_chunk(self, start_idx: int, chunk_size: int = 128) -> Optional[float]:
+        if not self.critic_model or self.keys is None:
+            return None
             
-            # Invalidate mask for next forward pass
-            self.active_mask = None
+        seq_len = self.keys.shape[2]
+        if start_idx + chunk_size > seq_len:
+            return None
+            
+        with self._lock:
+            # Atomic extraction and evaluation to lock Metal encoder
+            chunk = self.keys[0, 0, start_idx:start_idx+chunk_size, :].astype(mx.float32)
+            mx.eval(chunk) # Force encoding and commit before releasing lock
+            np_chunk = np.array(chunk).reshape(1, chunk_size, -1)
+            
+            if np_chunk.shape[2] != 128:
+                np_chunk = np.pad(np_chunk, ((0,0), (0,0), (0, 128 - np_chunk.shape[2])))[:, :, :128]
+
+        # Prediction happens outside lock (ANE is independent silicon)
+        prediction = self.critic_model.predict({"hidden_states": np_chunk})
+        output_key = list(prediction.keys())[0] 
+        severity = float(prediction[output_key][0])
+        return severity
