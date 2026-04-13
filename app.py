@@ -53,7 +53,7 @@ custom_css = """
 .dark { color: #e2e8f0 !important; }
 """
 
-with gr.Blocks(title="ASH-KV Diagnostics") as ui:
+with gr.Blocks(theme=gr.themes.Monochrome(), css=custom_css, title="ASH-KV Diagnostics") as ui:
     gr.Markdown("<h2 style='color: #10b981; font-family: monospace;'>ASH-KV v3.0.0 // Asynchronous Self-Healing Manifold</h2>")
     
     with gr.Row():
@@ -73,4 +73,4 @@ with gr.Blocks(title="ASH-KV Diagnostics") as ui:
     run_btn.click(fn=generate_triage_data, inputs=[tokens, errors], outputs=[plot_output, log_output, metric_display])
 
 if __name__ == "__main__":
-    ui.launch(theme=gr.themes.Monochrome(), css=custom_css)
+    ui.launch()
