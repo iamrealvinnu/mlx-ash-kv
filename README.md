@@ -1,30 +1,38 @@
-
+---
+title: MLX-ASH-KV
+emoji: ⚡
+colorFrom: green
+colorTo: gray
+sdk: gradio
+sdk_version: 5.16.0
+app_file: app.py
+pinned: false
+license: apache-2.0
+---
 
 # ⚡️ MLX-ASH-KV: Asynchronous Self-Healing Cache
 
 [![Hugging Face Spaces](https://img.shields.io/badge/🤗%20Hugging%20Face-Live%20Dashboard-emerald)](https://huggingface.co/spaces/guptavinay/mlx-ash-kv)
 [![GitHub](https://img.shields.io/badge/GitHub-Repository-slate)](https://github.com/iamrealvinnu/mlx-ash-kv)
 
-**ASH-KV** is a high-performance memory infrastructure for Large Language Models on Apple Silicon. It introduces an **"Active Immune System"** for inference, enabling real-time hallucination excision with zero latency impact.
-
-Developed for high-stakes reasoning loops (such as clinical triage engines like TaraAI) where logical consistency is non-negotiable.
+**ASH-KV v4.0.0** is a high-performance memory infrastructure for Large Language Models on Apple Silicon. It introduces **"Temporal Rollback"**—a zero-latency mechanism for excising hallucinations and their causal downstream contamination.
 
 ---
 
-## 🔬 The Architecture: Ghost Critic & Metal Mutation
+## 🔬 Breakthrough: Temporal Rollback (Phase 1)
 
-Traditional KV caches are static structures. When a model hallucinates, the standard recourse is to stop generation, prune the cache, and restart—a costly, high-latency process.
+Traditional masking is binary: a token is either active or dead. In v4.0.0, we solve the **"Orphaned State"** problem (tokens generated *after* a hallucination but *before* its detection) using soft causal correction.
 
-ASH-KV redefines this via a **Dual-Threaded Manifold**:
+### 🧠 Gaussian-Decay Manifold
+When a hallucination is flagged, ASH-KV projects a **Gaussian gravity well** onto the attention manifold:
+1.  **Surgical Strike:** The flagged node receives a `-10000.0` penalty (Softmax zero).
+2.  **Causal Decay:** Subsequent orphaned tokens receive a decaying penalty based on their proximity to the strike, mathematically diluting their influence on future generation.
+3.  **Sink Preservation:** The `<bos>` token (Index 0) is strictly protected as an **Attention Sink**, ensuring the Softmax probability mass has a stable anchor to prevent catastrophic collapse.
 
-1.  **Primary Generation Thread (GPU):** Runs the LLM forward passes at maximum speed. It interacts with the cache in $O(1)$ time, receiving the latest Key/Value tensors and an **Immune Mask**.
-2.  **Ghost Critic Thread (ANE/CPU/GPU):** A parallel verification daemon (e.g., a Process Reward Model or ANE-compiled validator) monitors the Unified Memory manifold asynchronously. When a logical contradiction is detected, the Critic flags the offending node.
-3.  **Fused Metal Mutation:** A surgical JIT-compiled kernel (`@mx.compile`) instantly injects negative infinity (`-10000.0`) into the attention manifold at the flagged indices. This effectively "excises" the poisoned logic from the model's future attention passes without physically reallocating memory.
-
-### Key Performance Metrics (Apple M4)
-- **Verification Overhead:** `0.00 ms` (Fully Asynchronous).
-- **Mask Injection Latency:** `< 0.1 ms` (Fused Metal Kernel).
-- **Throughput:** `100%` Maintained during healing events.
+### 📊 The Receipts (Architectural Guarantees)
+- **Critic Overhead:** Asynchronous / Non-blocking (Bypasses primary generation thread).
+- **Mutation Latency:** Native Metal Speed (Fused via `@mx.compile`).
+- **Throughput:** Zero O(N) memory reallocation penalties during healing events.
 
 ---
 
@@ -38,8 +46,6 @@ pip install .
 ```
 
 ### 🧩 MLX-LM Integration
-Patch ASH-KV into any `mlx_lm` generation loop to enable real-time context healing:
-
 ```python
 from mlx_lm import load
 from mlx_ash_kv import ASHCache
@@ -47,14 +53,14 @@ from mlx_ash_kv import ASHCache
 model, tokenizer = load("mlx-community/Meta-Llama-3-8B-Instruct-4bit")
 cache = ASHCache()
 
-# Inside your autoregressive loop:
+# Inside your loop:
 for token in generation_loop:
-    new_k, new_v = get_new_kv(token)
-    
-    # 1. Update cache & fetch the immune mask
     keys, values, immune_mask = cache.update(new_k, new_v)
     
-    # 2. Inject mask into attention computation
+    # Asynchronous strike from a Ghost Critic:
+    # severity_score (0.0 to 1.0) defines the Gaussian spread (sigma)
+    cache.flag_hallucination(index=102, severity_score=0.7)
+    
     logits = model(token, cache=(keys, values), mask=immune_mask)
 ```
 
@@ -62,8 +68,8 @@ for token in generation_loop:
 
 ## 📊 Diagnostics & Visualization
 
-### 1. Terminal Diagnostic Monitor (TUI)
-For systems engineers, visualize the tensor manifold mutation directly in your CLI using the `rich` monitor:
+### 1. Terminal Monitor (TUI)
+Visualize Gaussian gradients and sink preservation in real-time:
 ```bash
 export PYTHONPATH=$PYTHONPATH:$(pwd)/src
 python3 tests/ash_kv/benchmark.py
@@ -77,11 +83,6 @@ python3 app.py
 ```
 
 ---
-
-## ⚠️ Limitations & R&D Roadmap
-While ASH-KV provides zero-latency excision, it relies on post-hoc attention masking. 
-* **The "Orphaned State" Problem:** Masking a token to `-inf` removes it from future attention, but any intermediate tokens generated *between* the hallucination and the excision event may still contain residual bias from the poisoned node.
-* **Future Work:** V4.0.0 aims to integrate a rollback decay gradient, applying partial attention penalties to cascading tokens dynamically.
 
 ## 🛡️ License
 Apache 2.0. Built for the future of agentic reasoning on Apple Silicon.
