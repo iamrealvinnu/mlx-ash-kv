@@ -1,5 +1,5 @@
 """
-Diagnostic TUI and Integration Benchmark for ASH-KV (v8.0.0).
+Diagnostic TUI and Integration Benchmark for ASH-KV (v8.0.2).
 
 Provides a brutalist, high-density Terminal UI to visualize the 
 Multi-Layer Memory Hypervisor in action.
@@ -118,7 +118,7 @@ class DiagnosticMonitor:
         layout["main"].split_row(Layout(name="left", ratio=1), Layout(name="right", ratio=2))
         layout["left"].split_column(Layout(name="telemetry", size=10), Layout(name="logs"))
         
-        header_text = Text(" ASH-KV V8.0.0 // MULTI-LAYER MEMORY HYPERVISOR ", style="bold black on cyan", justify="center")
+        header_text = Text(" ASH-KV V8.0.2 // MULTI-LAYER MEMORY HYPERVISOR ", style="bold black on cyan", justify="center")
         layout["header"].update(Panel(header_text, style="cyan"))
         
         layout["left"]["telemetry"].update(Panel(self.generate_telemetry(), title="[bold]HARDWARE TELEMETRY[/]", border_style="cyan"))
@@ -136,11 +136,9 @@ def primary_generation_loop(monitor: DiagnosticMonitor):
             new_v = mx.random.uniform(shape=(BATCH_SIZE, NUM_HEADS, 1, HEAD_DIM), dtype=mx.float16)
             monitor.cache.update_layer(l, new_k, new_v)
         
-        # Periodic Commit: Commit all 32 layers to hardware every 10 steps
-        # This prevents the computational graph from hitting the Metal resource limit
+        # Periodic Commit: Commit all 32 layers every 10 steps to prevent OOM
         if i % 10 == 0:
             mask = monitor.cache.get_mask()
-            # Spread all layer arrays for evaluation
             all_tensors = []
             for l in range(NUM_LAYERS):
                 all_tensors.extend([monitor.cache.layer_keys[l], monitor.cache.layer_values[l]])
