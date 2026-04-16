@@ -1,6 +1,10 @@
 import gradio as gr
 import time
 import os
+import sys
+
+# Ensure the 'src' directory is in the path so we can import the local package
+sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 
 try:
     import mlx.core as mx
