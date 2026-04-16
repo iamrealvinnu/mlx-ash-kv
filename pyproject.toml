@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mlx-ash-kv"
-version = "8.2.2"
+version = "8.2.4"
 description = "Asynchronous Self-Healing KV Cache for Silicon-Native LLMs by GDI Nexus"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -14,10 +14,10 @@ authors = [
 ]
 keywords = [
     "mlx", "llm", "kv-cache", "self-healing", "apple-silicon", 
-    "neural-engine", "cuda", "pytorch", "hallucination-prevention", "varentropy"
+    "neural-engine", "cuda", "pytorch", "varentropy", "attention-masking"
 ]
 classifiers = [
-    "Development Status :: 5 - Production/Stable",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: Apache Software License",
