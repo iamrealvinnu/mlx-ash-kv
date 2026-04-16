@@ -14,7 +14,7 @@ license: apache-2.0
 
 [![Hardware](https://img.shields.io/badge/Hardware-Apple%20Silicon%20%26%20NVIDIA-blue)](#)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green)](#)
-[![Version](https://img.shields.io/badge/Version-8.2.1-emerald)](#)
+[![Version](https://img.shields.io/badge/Version-8.2.2-emerald)](#)
 [![Company](https://img.shields.io/badge/Developed%20by-GDI%20Nexus-black)](https://gdinexus.com)
 
 **ASH-KV** is a high-performance, hardware-aware middleware layer designed for **High-Assurance Inference**. Developed by **GDI Nexus**, it surgically intercepts and corrects the KV cache at the silicon level, preventing logical drift and clinical hallucinations with zero detectable latency.
@@ -29,8 +29,8 @@ Surgical KV cache mutation at **Metal (Apple Silicon)** and **CUDA (NVIDIA)** sp
 ### 🔌 Hardware Agnostic (Universal HAL)
 The **Hardware Abstraction Layer (HAL)** automatically detects your silicon and hot-swaps between **MLX** and **PyTorch** backends. The same code runs on an M4 MacBook or an NVIDIA H100 server.
 
-### 🛡️ Adaptive Shielding & Real-Time Healing
-Autonomous sensitivity scaling via the **AdaptiveSensitivity Agent**. Integrated with a **Deterministic Clinical Rules Engine (DCRE)**, ASH-KV monitors token generation in real-time and prunes attention heads the microsecond a contraindication is detected.
+### 🛡️ Zero-Shot Healing (Universal Tensor Math)
+No hardcoded rules. ASH-KV monitors **Attention Manifold Entropy (Varentropy)** in real-time. By detecting mathematical uncertainty at the tensor level, it prunes logical drift across any domain—coding, medicine, or creative writing.
 
 ### ♾️ Infinite Horizon (NVMe Paging)
 Break the VRAM ceiling. ASH-KV dynamically offloads "Cold" context chunks to NVMe storage, allowing for 100k+ token windows on consumer-grade hardware without OOM crashes.
