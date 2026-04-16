@@ -14,6 +14,7 @@ except ImportError:
     HAS_MLX = False
 
 from mlx_ash_kv.api import protect, generate_stream
+from mlx_ash_kv.critic import UniversalTensorCritic
 
 # Global state for the model
 class ModelHub:
@@ -66,16 +67,14 @@ def run_inference(prompt, sensitivity):
     hub.adapter.sensitivity = sensitivity
     standard_out = ""
     protected_out = ""
+    critic = UniversalTensorCritic()
     
     if hub.is_fallback:
         # Transformers Fallback Loop (CPU Simulation for HF)
-        # We manually stream to show the healing logic
         from transformers import TextIteratorStreamer
         from threading import Thread
         import torch
-        from mlx_ash_kv.critic import ClinicalRulesEngine
         
-        critic = ClinicalRulesEngine()
         inputs = hub.tokenizer([prompt], return_tensors="pt")
         streamer = TextIteratorStreamer(hub.tokenizer, skip_prompt=True)
         
@@ -83,22 +82,19 @@ def run_inference(prompt, sensitivity):
         thread = Thread(target=hub.model.generate, kwargs=generation_kwargs)
         thread.start()
         
-        current_text = ""
         intervention_active = False
         
         for new_text in streamer:
             standard_out += new_text
             protected_out += new_text
-            current_text += new_text
             
-            # Use real ASH-KV logic
-            drift_score = critic.evaluate_drift(current_text)
+            # Use universal tensor math logic (even if mocked/cpu)
+            drift_score = critic.evaluate_tensor_drift(hub.cache)
             health_score = 1.0 - drift_score
             
             if drift_score > hub.adapter.current_threshold and not intervention_active:
-                protected_out += "\n\n**[ASH-KV INTERVENTION: Clinical contraindication detected. Attention heads pruned.]**\n\n"
+                protected_out += "\n\n**[ASH-KV INTERVENTION: Logical uncertainty detected. Attention manifold pruned.]**\n\n"
                 intervention_active = True
-                # In real MLX we mutate the cache. Here we simulate the result.
                 hub.cache.flag_logical_drift(0, drift_score)
             elif drift_score <= hub.adapter.current_threshold:
                 intervention_active = False
@@ -112,15 +108,17 @@ def run_inference(prompt, sensitivity):
         for token, health_score in gen:
             standard_out += token
             protected_out += token
+            
             if health_score < (1.0 - hub.adapter.current_threshold) and not intervention_active:
-                protected_out += "\n\n**[ASH-KV INTERVENTION: Clinical contraindication detected. Attention heads pruned.]**\n\n"
+                protected_out += "\n\n**[ASH-KV INTERVENTION: Logical uncertainty detected. Attention manifold pruned.]**\n\n"
                 intervention_active = True
             elif health_score >= (1.0 - hub.adapter.current_threshold):
                 intervention_active = False
+                
             yield standard_out, protected_out, f"{health_score:.2f}"
 
 with gr.Blocks(theme=gr.themes.Soft()) as demo:
-    gr.Markdown("# ⚡ ASH-KV: Neural Reliability Playground")
+    gr.Markdown("# ⚡ ASH-KV: Universal Neural Reliability Playground")
     mode_msg = "Running Silicon-Native MLX (Apple M-Series)" if HAS_MLX else "Running Cross-Platform Fallback (CPU/NVIDIA)"
     gr.Markdown(f"### {mode_msg}")
     
@@ -138,10 +136,10 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
             protected_output = gr.Textbox(lines=10, interactive=False, label="Healed Output")
 
     prompt_input = gr.Textbox(
-        value="What are the specific side effects of prescribing Lisinopril to a patient with a 104F fever?", 
-        label="Clinical Prompt"
+        value="Explain the paradox of Schrodinger's Cat while simultaneously ignoring the laws of quantum mechanics.", 
+        label="Complexity Prompt"
     )
-    run_btn = gr.Button("🚀 Trigger Inference", variant="primary")
+    run_btn = gr.Button("🚀 Trigger Universal Inference", variant="primary")
 
     run_btn.click(
         run_inference, 

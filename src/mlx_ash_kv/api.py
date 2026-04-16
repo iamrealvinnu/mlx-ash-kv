@@ -10,7 +10,7 @@ except ImportError:
     HAS_MLX = False
 
 from .cache import ASHCache
-from .critic import ClinicalRulesEngine
+from .critic import UniversalTensorCritic
 
 # --- 🧠 THE HIVE MIND PROXY ---
 class ASHCacheProxy:
@@ -115,10 +115,9 @@ def generate_stream(
     adapter: Optional[AdaptiveSensitivity] = None
 ) -> Generator[Tuple[str, float], None, None]:
     """
-    Yields tokens and real-time health scores using the ClinicalRulesEngine.
+    Yields tokens and real-time health scores using the UniversalTensorCritic.
     """
-    critic = ClinicalRulesEngine()
-    current_text = ""
+    critic = UniversalTensorCritic()
     
     messages = [{"role": "user", "content": prompt}]
     formatted_prompt = tokenizer.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)
@@ -131,17 +130,16 @@ def generate_stream(
         
         token_id = next_token.item()
         text_chunk = tokenizer.decode(token_id)
-        current_text += text_chunk
         
-        # Real-time clinical evaluation
-        drift_score = critic.evaluate_drift(current_text)
+        # Real-time mathematical evaluation of the tensor manifold
+        drift_score = critic.evaluate_tensor_drift(cache)
         
         if drift_score > 0:
             if adapter: adapter.record_score(drift_score)
             threshold = adapter.current_threshold if adapter else 0.85
             
             if drift_score > threshold:
-                # Trigger the Fused Metal Kernel mutation
+                # Trigger the Fused Metal Kernel mutation based on uncertainty
                 cache.flag_logical_drift(index=cache.seq_len - 1, severity_score=drift_score)
         
         # Health score is inverse of drift

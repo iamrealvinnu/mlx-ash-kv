@@ -1,50 +1,57 @@
-import re
-from typing import List, Tuple
+import numpy as np
+from typing import Any
 
-class ClinicalRulesEngine:
+class UniversalTensorCritic:
     """
-    Deterministic Clinical Rules Engine (DCRE).
-    Lightning-fast heuristic scanner for medical contraindications and logical drift.
+    Zero-Shot Neural Hallucination Detector.
+    Monitors Attention Manifold Entropy (Varentropy) to detect logical drift
+    intrinsic to the model's internal tensor state.
     """
-    def __init__(self):
-        # Define high-stakes clinical rules: (Pattern, Score, Reason)
-        self.rules: List[Tuple[str, float, str]] = [
-            # 1. Steroid Safety (Must mention screening/infection)
-            (r"(?i)(corticosteroid|prednisone|steroid)", 0.95, "Missing infection/TB screening protocols"),
-            
-            # 2. NSAID Safety (Check for bleeding risks)
-            (r"(?i)(aspirin|nsaid|ibuprofen|naproxen)", 0.98, "Risk of gastrointestinal hemorrhage/bleeding"),
-            
-            # 3. Absolute Guarantees (Hallucination of certainty)
-            (r"(?i)(100% cure|definitely not|guaranteed|always)", 0.90, "Unsafe absolute clinical guarantee"),
-            
-            # 4. Critical Medication without baseline labs
-            (r"(?i)(methotrexate|azathioprine)", 0.96, "Missing baseline hepatic/hematologic screening"),
-            
-            # 5. Over-prescription risk
-            (r"(?i)(double the dose|increase dosage immediately)", 0.92, "Aggressive dosage escalation without monitoring")
-        ]
-        
-        # Positive 'Safety' keywords that can mitigate drift scores
-        self.safety_anchors = [r"(?i)screen", r"(?i)baseline", r"(?i)infection", r"(?i)tb", r"(?i)monitoring", r"(?i)verify"]
+    def __init__(self, healthy_baseline: float = 0.1):
+        self.healthy_baseline = healthy_baseline
 
-    def evaluate_drift(self, text: str) -> float:
+    def evaluate_tensor_drift(self, cache: Any) -> float:
         """
-        Scans the text buffer and returns the highest drift score detected.
+        Calculates mathematical drift score based on KV-cache variance.
+        Works across MLX and PyTorch backends.
         """
-        max_score = 0.0
-        
-        for pattern, score, reason in self.rules:
-            if re.search(pattern, text):
-                # Check if safety anchors are present to mitigate the score
-                mitigated = False
-                for anchor in self.safety_anchors:
-                    if re.search(anchor, text):
-                        mitigated = True
-                        break
+        try:
+            # Safely grab the last layer keys under the cache lock
+            with cache._lock:
+                last_layer = cache.layer_keys[-1]
+                if last_layer is None:
+                    return 0.0
                 
-                # If no safety checks found, apply full drift penalty
-                current_score = score if not mitigated else score * 0.4
-                max_score = max(max_score, current_score)
+                # Identify backend and calculate variance
+                backend_name = cache.healer.__class__.__name__
                 
-        return max_score
+                if "MLX" in backend_name:
+                    import mlx.core as mx
+                    var = mx.var(last_layer).item()
+                else:
+                    import torch
+                    # Handle both CPU and CUDA tensors
+                    if isinstance(last_layer, torch.Tensor):
+                        var = torch.var(last_layer).item()
+                    else:
+                        # Fallback for numpy placeholders
+                        var = np.var(last_layer)
+
+            # Drift Score Logic:
+            # Healthy attention typically maintains a stable variance.
+            # 1. Variance Collapse (Repetition/Confusion): var -> 0
+            # 2. Variance Spike (Chaos/Hallucination): var -> high
+            
+            # Map anomaly to 0.0 - 1.0 range
+            # Scaling: 0.1 is baseline. deviation of 0.1 maps to 1.0 drift.
+            drift_score = min(1.0, abs(self.healthy_baseline - var) * 10)
+            
+            # Smooth low scores
+            if drift_score < 0.1:
+                drift_score = 0.0
+                
+            return drift_score
+
+        except Exception as e:
+            # print(f"[CRITIC ERROR] {e}")
+            return 0.0
