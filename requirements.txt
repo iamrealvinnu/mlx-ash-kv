@@ -6,3 +6,5 @@ rich
 coremltools
 torch
 huggingface_hub
+transformers
+accelerate

@@ -94,8 +94,17 @@ def protect(model: Any, sensitivity: float = 0.85, critic_model_path: Optional[s
     """
     Wraps a model with ASH-KV protection.
     """
-    num_layers = getattr(model, "num_layers", 32)
-    num_heads = getattr(model, "n_heads", 32)
+    # Detect architecture (MLX vs Transformers)
+    if hasattr(model, "config"):
+        # Transformers
+        num_layers = getattr(model.config, "num_hidden_layers", 
+                     getattr(model.config, "num_layers", 32))
+        num_heads = getattr(model.config, "num_attention_heads", 
+                    getattr(model.config, "n_heads", 32))
+    else:
+        # MLX
+        num_layers = getattr(model, "num_layers", 32)
+        num_heads = getattr(model, "n_heads", 32)
     
     cache = ASHCache(critic_model_path=critic_model_path, num_layers=num_layers, num_heads=num_heads)
     adapter = AdaptiveSensitivity(initial_sensitivity=sensitivity)

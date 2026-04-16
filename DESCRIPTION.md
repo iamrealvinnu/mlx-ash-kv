@@ -1,57 +1,8 @@
-Metadata-Version: 2.4
-Name: mlx-ash-kv
-Version: 8.3.1
-Summary: Asynchronous Self-Healing KV Cache for Silicon-Native LLMs by GDI Nexus
-Author-email: GDI Nexus <contactus@gdinexus.com>
-License: Apache-2.0
-Project-URL: Homepage, https://gdinexus.com
-Project-URL: Repository, https://github.com/iamrealvinnu/mlx-ash-kv
-Project-URL: Bug Tracker, https://github.com/iamrealvinnu/mlx-ash-kv/issues
-Keywords: mlx,llm,kv-cache,self-healing,apple-silicon,neural-engine,cuda,pytorch,varentropy,attention-masking
-Classifier: Development Status :: 4 - Beta
-Classifier: Intended Audience :: Developers
-Classifier: Intended Audience :: Science/Research
-Classifier: License :: OSI Approved :: Apache Software License
-Classifier: Operating System :: MacOS :: MacOS X
-Classifier: Operating System :: POSIX :: Linux
-Classifier: Operating System :: Microsoft :: Windows
-Classifier: Programming Language :: Python :: 3.10
-Classifier: Programming Language :: Python :: 3.11
-Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
-Requires-Python: >=3.10
-Description-Content-Type: text/markdown
-Requires-Dist: mlx>=0.18.0
-Requires-Dist: numpy
-Requires-Dist: rich
-Requires-Dist: coremltools
-Requires-Dist: gradio
-Requires-Dist: mlx-lm
-Requires-Dist: torch
-Requires-Dist: transformers
-Requires-Dist: accelerate
-Provides-Extra: dev
-Requires-Dist: pytest; extra == "dev"
-Requires-Dist: black; extra == "dev"
-Requires-Dist: build; extra == "dev"
-Requires-Dist: twine; extra == "dev"
-
----
-title: MLX-ASH-KV
-emoji: ⚡
-colorFrom: green
-colorTo: gray
-sdk: gradio
-sdk_version: 5.16.0
-app_file: app.py
-pinned: false
-license: apache-2.0
----
-
 # ASH-KV: Dynamic Attention Steering & KV-Cache Integrity Middleware
 
 [![Hardware](https://img.shields.io/badge/Hardware-Apple%20Silicon%20%26%20NVIDIA-blue)](#)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green)](#)
-[![Version](https://img.shields.io/badge/Version-8.3.0--beta-emerald)](#)
+[![Version](https://img.shields.io/badge/Version-8.3.1--beta-emerald)](#)
 [![Company](https://img.shields.io/badge/Developed%20by-GDI%20Nexus-black)](https://gdinexus.com)
 
 **ASH-KV** (Asynchronous Self-Healing KV Cache) is a high-performance middleware layer designed for **Runtime Manifold Integrity Enforcement**. It leverages silicon-native kernels to monitor the mathematical uncertainty (**Varentropy**) of the Attention Manifold and surgically prunes logical drift at the hardware level.

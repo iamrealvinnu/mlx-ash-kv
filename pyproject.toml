@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mlx-ash-kv"
-version = "8.3.0"
+version = "8.3.1"
 description = "Asynchronous Self-Healing KV Cache for Silicon-Native LLMs by GDI Nexus"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -35,7 +35,9 @@ dependencies = [
     "coremltools",
     "gradio",
     "mlx-lm",
-    "torch"
+    "torch",
+    "transformers",
+    "accelerate"
 ]
 
 [project.optional-dependencies]

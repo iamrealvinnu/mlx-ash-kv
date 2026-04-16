@@ -5,6 +5,8 @@ coremltools
 gradio
 mlx-lm
 torch
+transformers
+accelerate
 
 [dev]
 pytest
