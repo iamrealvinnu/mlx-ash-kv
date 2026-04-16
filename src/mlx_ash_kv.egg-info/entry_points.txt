@@ -1,0 +1,2 @@
+[console_scripts]
+ash-kv = mlx_ash_kv.cli:main

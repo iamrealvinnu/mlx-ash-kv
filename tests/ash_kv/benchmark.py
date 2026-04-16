@@ -13,6 +13,7 @@ import math
 import os
 from collections import deque
 from mlx_ash_kv.cache import ASHCache
+from mlx_ash_kv.monitor import LiveDiagnosticTUI
 
 from rich.live import Live
 from rich.layout import Layout
@@ -38,6 +39,7 @@ class DiagnosticMonitor:
             num_layers=NUM_LAYERS,
             num_heads=NUM_HEADS
         )
+        self.tui = LiveDiagnosticTUI(self.cache)
         self.excision_log = deque(maxlen=20)
         self.start_time = time.time()
         self.is_running = True
@@ -45,7 +47,7 @@ class DiagnosticMonitor:
         self.last_ane_score = 0.0
         
     def generate_barcode(self) -> Group:
-        blocks = 120
+        blocks = 80 # Reduced to fit the new 3-column layout
         tokens_per_block = TARGET_TOKENS / blocks
         barcode_lines = []
         
@@ -102,9 +104,13 @@ class DiagnosticMonitor:
         table.add_row("Manifold Depth", f"{current_len} tokens")
         table.add_row("Throughput", f"{tps:.2f} tok/s")
         table.add_row("Unified Memory", f"{mem_mb:.2f} MB")
-        table.add_row("Verification", "ANE Verification Daemon (AVD)")
+        
+        # Performance Monitor Integration
+        table.add_row("Fused Mutation", f"[bold yellow]{self.cache.perf_monitor.last_ms:.4f} ms[/]")
+        table.add_row("Avg Mutation", f"[bold yellow]{self.cache.perf_monitor.average_ms:.4f} ms[/]")
+        
         table.add_row("AVD Score", f"{self.last_ane_score:.4f}")
-        table.add_row("Mode", "[bold cyan]Multi-Layer Override[/]")
+        table.add_row("Mode", "[bold cyan]Speed vs. Safety[/]")
         
         return table
 
@@ -115,14 +121,23 @@ class DiagnosticMonitor:
     def make_layout(self) -> Layout:
         layout = Layout(name="root")
         layout.split(Layout(name="header", size=3), Layout(name="main"))
-        layout["main"].split_row(Layout(name="left", ratio=1), Layout(name="right", ratio=2))
-        layout["left"].split_column(Layout(name="telemetry", size=10), Layout(name="logs"))
+        layout["main"].split_row(
+            Layout(name="left", ratio=1), 
+            Layout(name="center", ratio=1),
+            Layout(name="right", ratio=1)
+        )
+        layout["left"].split_column(Layout(name="telemetry", size=12), Layout(name="logs"))
         
-        header_text = Text(" ASH-KV V8.0.2 // MULTI-LAYER MEMORY HYPERVISOR ", style="bold black on cyan", justify="center")
+        header_text = Text(" ASH-KV V8.0.2 // SPEED VS. SAFETY HEAD-TO-HEAD ", style="bold black on cyan", justify="center")
         layout["header"].update(Panel(header_text, style="cyan"))
         
-        layout["left"]["telemetry"].update(Panel(self.generate_telemetry(), title="[bold]HARDWARE TELEMETRY[/]", border_style="cyan"))
+        layout["left"]["telemetry"].update(Panel(self.generate_telemetry(), title="[bold]PERFORMANCE (SPEED)[/]", border_style="cyan"))
         layout["left"]["logs"].update(Panel(self.generate_logs(), title="[bold]AVD SYSTEM LOGS[/]", border_style="cyan"))
+        
+        # Center: Layer Health from TUI
+        layout["center"].update(Panel(self.tui.generate_table(), title="[bold]LAYER HEALTH (SAFETY)[/]", border_style="green"))
+        
+        # Right: Barcode Manifold
         layout["right"].update(Panel(self.generate_barcode(), title="[bold]MANIFOLD STATUS[/]", border_style="cyan"))
         return layout
 

@@ -1,10 +1,23 @@
+Metadata-Version: 2.4
+Name: mlx-ash-kv
+Version: 8.0.2
+Summary: Asynchronous Self-Healing KV Cache for Silicon-Native LLMs
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: mlx>=0.18.0
+Requires-Dist: numpy
+Requires-Dist: rich
+Requires-Dist: coremltools
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: black; extra == "dev"
+
 # ASH-KV: The Self-Healing Middleware for LLMs
 
 [![Hardware](https://img.shields.io/badge/Hardware-Apple%20Silicon%20%26%20NVIDIA-blue)](#)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green)](#)
-[![Version](https://img.shields.io/badge/Version-8.2.0-emerald)](#)
 
-**ASH-KV** is a high-performance, hardware-aware middleware layer designed to provide **Runtime Integrity** for Large Language Models. By surgically intercepting and correcting the KV cache at the silicon level, it prevents logical drift and clinical hallucinations with zero detectable latency.
+**ASH-KV** is a high-performance, hardware-aware middleware layer designed to provide **Runtime Integrity** for Large Language Models. By surgically intercepting and correcting the KV cache at the silicon level, it prevents logical drift and hallucinations with zero detectable latency.
 
 ---
 
@@ -16,11 +29,8 @@ Surgical KV cache mutation at **Metal (Apple Silicon)** and **CUDA (NVIDIA)** sp
 ### 🔌 Hardware Agnostic (Universal HAL)
 The **Hardware Abstraction Layer (HAL)** automatically detects your silicon and hot-swaps between **MLX** and **PyTorch** backends. The same code runs on an M4 MacBook or an NVIDIA H100 server.
 
-### 🛡️ Adaptive Shielding & Real-Time Healing
-Autonomous sensitivity scaling via the **AdaptiveSensitivity Agent**. Integrated with a **Deterministic Clinical Rules Engine (DCRE)**, ASH-KV monitors token generation in real-time and prunes attention heads the microsecond a contraindication is detected.
-
-### ♾️ Infinite Horizon (NVMe Paging)
-Break the VRAM ceiling. ASH-KV dynamically offloads "Cold" context chunks to NVMe storage, allowing for 100k+ token windows on consumer-grade hardware without OOM crashes.
+### 🛡️ Adaptive Shielding
+Autonomous sensitivity scaling via the **AdaptiveSensitivity Agent**. The system learns from historical AVD (Asynchronous Verification Daemon) scores to balance strict integrity with model creativity.
 
 ---
 
@@ -38,7 +48,7 @@ Integrate ASH-KV into any production pipeline to add an immediate safety layer.
 from mlx_ash_kv.api import protect
 
 # Wrap your existing model with the ASH-KV shield
-protected_model, cache, shield, proxies = protect(model, sensitivity=0.85)
+protected_model, cache, shield = protect(model, sensitivity=0.85)
 
 # Inference continues normally, but with real-time surgical healing
 ```
@@ -48,20 +58,14 @@ protected_model, cache, shield, proxies = protect(model, sensitivity=0.85)
 ## 🛠️ Command Center (CLI)
 ASH-KV comes with a professional CLI for systems verification and benchmarking.
 
-*   `ash-kv install`: Verify hardware drivers, silicon backend, and **NVMe Paging Stress Test**.
+*   `ash-kv install`: Verify hardware drivers and silicon backend.
 *   `ash-kv benchmark`: Run the 100-case "Hard Truth" evaluation suite.
-*   `ash-kv monitor`: Launch the Live Diagnostic TUI to see layer-wise health and [HOT/WARM] memory distribution.
-*   `ash-kv demo`: Launch the Gradio B2B Reliability Playground.
+*   `ash-kv monitor`: Launch the Live Diagnostic TUI to see layer-wise health.
 
 ---
 
 ## 🔬 Scientific Foundation
 ASH-KV implements **Asynchronous Self-Healing** protocols that offload hallucination detection to secondary silicon (like the ANE or secondary GPU cores), ensuring the main generation loop remains unobstructed.
-
----
-
-### ⚠️ DISCLAIMER
-**ASH-KV is a hardware-level reliability layer designed to assist professionals. It is NOT a substitute for professional medical or legal judgment. All AI-generated outputs, even those "healed" by ASH-KV, must be verified by qualified human professionals before making clinical or legal decisions.**
 
 ---
 Built for the future of mission-critical Agentic Reasoning.
