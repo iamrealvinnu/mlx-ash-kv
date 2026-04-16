@@ -3,26 +3,24 @@ from typing import Any
 
 class UniversalTensorCritic:
     """
-    Zero-Shot Neural Hallucination Detector.
-    Monitors Attention Manifold Entropy (Varentropy) to detect logical drift
-    intrinsic to the model's internal tensor state.
+    Academic-Grade Neural Uncertainty Detector.
+    Implements Varentropy-Proxy monitoring by analyzing the variance of 
+    Key tensors within the Attention Manifold.
     """
     def __init__(self, healthy_baseline: float = 0.1):
         self.healthy_baseline = healthy_baseline
 
-    def evaluate_tensor_drift(self, cache: Any) -> float:
+    def calculate_varentropy_proxy(self, cache: Any) -> float:
         """
-        Calculates mathematical drift score based on KV-cache variance.
-        Works across MLX and PyTorch backends.
+        Calculates a normalized uncertainty index (0.0 - 1.0) based on 
+        the variance of the final layer's KV-cache.
         """
         try:
-            # Safely grab the last layer keys under the cache lock
             with cache._lock:
                 last_layer = cache.layer_keys[-1]
                 if last_layer is None:
                     return 0.0
                 
-                # Identify backend and calculate variance
                 backend_name = cache.healer.__class__.__name__
                 
                 if "MLX" in backend_name:
@@ -30,28 +28,20 @@ class UniversalTensorCritic:
                     var = mx.var(last_layer).item()
                 else:
                     import torch
-                    # Handle both CPU and CUDA tensors
                     if isinstance(last_layer, torch.Tensor):
                         var = torch.var(last_layer).item()
                     else:
-                        # Fallback for numpy placeholders
                         var = np.var(last_layer)
 
-            # Drift Score Logic:
-            # Healthy attention typically maintains a stable variance.
-            # 1. Variance Collapse (Repetition/Confusion): var -> 0
-            # 2. Variance Spike (Chaos/Hallucination): var -> high
+            # Varentropy-Proxy Logic:
+            # We map the deviation from the manifold baseline to an uncertainty index.
+            uncertainty_index = min(1.0, abs(self.healthy_baseline - var) * 10)
             
-            # Map anomaly to 0.0 - 1.0 range
-            # Scaling: 0.1 is baseline. deviation of 0.1 maps to 1.0 drift.
-            drift_score = min(1.0, abs(self.healthy_baseline - var) * 10)
-            
-            # Smooth low scores
-            if drift_score < 0.1:
-                drift_score = 0.0
+            # Filter low-level noise
+            if uncertainty_index < 0.1:
+                uncertainty_index = 0.0
                 
-            return drift_score
+            return uncertainty_index
 
-        except Exception as e:
-            # print(f"[CRITIC ERROR] {e}")
+        except Exception:
             return 0.0

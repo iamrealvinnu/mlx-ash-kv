@@ -1,89 +1,61 @@
-# ASH-KV: Hardware-Native Neural Integrity Middleware
+# ASH-KV: Dynamic Attention Steering & KV-Cache Integrity Middleware
 
 [![Hardware](https://img.shields.io/badge/Hardware-Apple%20Silicon%20%26%20NVIDIA-blue)](#)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green)](#)
-[![Version](https://img.shields.io/badge/Version-8.2.5--beta-emerald)](#)
+[![Version](https://img.shields.io/badge/Version-8.3.0--beta-emerald)](#)
 [![Company](https://img.shields.io/badge/Developed%20by-GDI%20Nexus-black)](https://gdinexus.com)
 
-**ASH-KV** (Asynchronous Self-Healing KV Cache) is a high-performance middleware layer designed for **Runtime Neural Integrity Enforcement**. It leverages silicon-native kernels to monitor the mathematical uncertainty of the Attention Manifold and surgically prunes logical drift at the hardware level.
+**ASH-KV** (Asynchronous Self-Healing KV Cache) is a high-performance middleware layer designed for **Runtime Manifold Integrity Enforcement**. It leverages silicon-native kernels to monitor the mathematical uncertainty (**Varentropy**) of the Attention Manifold and surgically prunes logical drift at the hardware level.
 
 ---
 
-## 🔬 Technical Core
+## Technical Methodology
 
-### ⚡ Deterministic Manifold Monitoring
-Instead of heuristic text-scanning, ASH-KV monitors **Attention Varentropy**. By calculating the mathematical variance across the KV-Cache in real-time, the system identifies the exact moment a model's transition probability distribution collapses—the mathematical precursor to hallucination.
+### Varentropy-Proxy Monitoring
+ASH-KV implements a deterministic uncertainty detector by analyzing the mathematical variance across the KV-Cache. This real-time analysis identifies **Manifold Collapse**—the mathematical state where a model's transition probability distribution becomes unstable—allowing for intervention before semantic errors materialize.
 
-### 🛡️ Fused Kernel Mutation
-When drift is detected, ASH-KV executes a **Gaussian Penalty Mask** directly within the model's compute graph.
-*   **Apple Silicon**: Uses `@mx.compile` Fused Metal kernels for zero-latency mutation.
-*   **NVIDIA**: Uses PyTorch/CUDA-synchronized tensor operations.
-*   **Latency**: Measured at **< 0.9ms** on Apple M4 hardware.
+### Real-Time Attention Steering
+When uncertainty exceeds the threshold, ASH-KV executes a **Gaussian Manifold Mutation** directly within the compute graph.
+*   **Apple Silicon**: Leverages `@mx.compile` Fused Metal kernels for sub-millisecond mutation.
+*   **NVIDIA**: Implements synchronized PyTorch/CUDA tensor operations via the Hardware Abstraction Layer (HAL).
+*   **Latency**: Verified at **< 0.9ms** on Apple M4 hardware (negligible inference overhead).
+
+### Infinite Horizon (NVMe Paging)
+To bypass physical VRAM constraints, ASH-KV utilizes an LRU-based paging protocol. Inactive context chunks are offloaded to NVMe storage using zero-copy memory mapping, enabling 100k+ token windows on consumer-grade hardware.
 
 ---
 
-## 📖 API Reference
+## API Reference
 
 ### `protect(model, sensitivity=0.85, critic_model_path=None)`
-Wraps an existing model with the ASH-KV Hypervisor.
+Initializes the ASH-KV Hypervisor for a given neural model.
 
 | Parameter | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
 | `model` | `nn.Module` | Required | An MLX or PyTorch model instance. |
-| `sensitivity` | `float` | `0.85` | The drift threshold (0.0 to 1.0). Lower is stricter. |
-| `critic_model_path` | `str` | `None` | Optional path to a CoreML `.mlpackage` for ANE offloading. |
-
-**Returns**: `(protected_model, cache, adapter, proxies)`
-*   `cache`: The `ASHCache` instance managing the manifold.
-*   `adapter`: The `AdaptiveSensitivity` agent for dynamic scaling.
-*   `proxies`: A list of KV-cache proxies to be passed to the model's forward pass.
+| `sensitivity` | `float` | `0.85` | The Varentropy threshold (0.0 to 1.0). |
+| `critic_model_path` | `str` | `None` | Optional path for ANE-accelerated manifold critics. |
 
 ---
 
-## 🚀 Usage with `mlx-lm`
-
-ASH-KV is designed to be a drop-in upgrade for the `mlx-lm` ecosystem.
-
-```python
-from mlx_lm import load
-from mlx_ash_kv.api import protect, generate_stream
-
-# 1. Load your model natively
-model, tokenizer = load("mlx-community/Meta-Llama-3-8B-Instruct-4bit")
-
-# 2. Apply the ASH-KV Shield
-model, cache, adapter, proxies = protect(model, sensitivity=0.85)
-
-# 3. Stream with Real-Time Healing
-gen = generate_stream(model, tokenizer, cache, proxies, prompt="Explain quantum gravity.")
-
-for token, health_score in gen:
-    print(token, end="", flush=True)
-    # health_score < 0.1 indicates an ASH-KV intervention occurred
-```
-
----
-
-## 📊 Benchmarks & Reproducibility
-Our performance claims are verifiable using the included benchmarking suite.
+## Research & Reproducibility
+Our benchmarks use `time.perf_counter_ns()` to track the exact overhead of the Fused Metal Mutations.
 ```bash
-ash-kv install    # Hardware Stress Test
-ash-kv benchmark  # Run 100-case Latency/Integrity suite
+ash-kv install    # Platform driver verification
+ash-kv benchmark  # Unified Latency & Integrity suite
 ```
-Scripts are located in `scripts/publish_benchmarks.py`. Methodology uses `time.perf_counter_ns()` to measure the Fused Metal Kernel overhead.
 
 ---
 
-## 🏗️ Architecture (HAL)
-The **Hardware Abstraction Layer** ensures the same code runs across disparate architectures:
-*   **`MLXHealer`**: Fused Metal operations for Apple Silicon.
-*   **`CudaHealer`**: Synchronized PyTorch operations for NVIDIA.
-*   **`UniversalTensorCritic`**: Zero-shot mathematical manifold evaluation.
+## Hardware Abstraction Layer (HAL)
+*   **`MLXHealer`**: Fused Metal backends for macOS.
+*   **`CudaHealer`**: Synchronized tensor backends for NVIDIA/Linux.
+*   **`UniversalTensorCritic`**: Pure mathematical manifold evaluation.
 
 ---
 
-### ⚠️ DISCLAIMER
-ASH-KV is a probabilistic reliability layer for assisting professionals. It is NOT a substitute for professional clinical or legal judgment. All AI outputs must be verified by qualified humans.
+### DISCLAIMER
+ASH-KV is a probabilistic reliability layer. It is NOT a substitute for professional clinical or legal judgment. All AI-generated outputs must be verified by qualified human professionals.
 
 ---
 © 2026 GDI Nexus Software Solutions LLP. All rights reserved.

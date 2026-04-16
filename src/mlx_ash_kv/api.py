@@ -131,19 +131,19 @@ def generate_stream(
         token_id = next_token.item()
         text_chunk = tokenizer.decode(token_id)
         
-        # Real-time mathematical evaluation of the tensor manifold
-        drift_score = critic.evaluate_tensor_drift(cache)
+        # Real-time mathematical evaluation of the tensor manifold (Varentropy Proxy)
+        uncertainty_index = critic.calculate_varentropy_proxy(cache)
         
-        if drift_score > 0:
-            if adapter: adapter.record_score(drift_score)
+        if uncertainty_index > 0:
+            if adapter: adapter.record_score(uncertainty_index)
             threshold = adapter.current_threshold if adapter else 0.85
             
-            if drift_score > threshold:
-                # Trigger the Fused Metal Kernel mutation based on uncertainty
-                cache.flag_logical_drift(index=cache.seq_len - 1, severity_score=drift_score)
+            if uncertainty_index > threshold:
+                # Trigger the Fused Metal Kernel mutation based on manifold collapse
+                cache.flag_logical_drift(index=cache.seq_len - 1, severity_score=uncertainty_index)
         
-        # Health score is inverse of drift
-        health_score = 1.0 - drift_score
+        # Health score is inverse of uncertainty
+        health_score = 1.0 - uncertainty_index
         
         yield text_chunk, health_score
         
