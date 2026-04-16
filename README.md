@@ -1,3 +1,15 @@
+---
+title: MLX-ASH-KV
+emoji: ⚡
+colorFrom: green
+colorTo: gray
+sdk: gradio
+sdk_version: 5.16.0
+app_file: app.py
+pinned: false
+license: apache-2.0
+---
+
 # ASH-KV: Dynamic Attention Steering & KV-Cache Integrity Middleware
 
 [![Hardware](https://img.shields.io/badge/Hardware-Apple%20Silicon%20%26%20NVIDIA-blue)](#)
