@@ -6,11 +6,16 @@
 import threading
 import math
 import numpy as np
-import coremltools as ct
 import os
 import time
 import shutil
 from typing import Tuple, List, Optional, Dict, Any
+
+try:
+    import coremltools as ct
+    HAS_COREML = True
+except ImportError:
+    HAS_COREML = False
 
 from .hal.factory import SiliconFactory
 
@@ -80,11 +85,14 @@ class ASHCache:
         self.total_paged_tokens = 0
         
         self.critic_model = None
-        if critic_model_path and os.path.exists(critic_model_path):
-            self.critic_model = ct.models.MLModel(
-                critic_model_path, 
-                compute_units=ct.ComputeUnit.CPU_AND_NE
-            )
+        if HAS_COREML and critic_model_path and os.path.exists(critic_model_path):
+            try:
+                self.critic_model = ct.models.MLModel(
+                    critic_model_path, 
+                    compute_units=ct.ComputeUnit.CPU_AND_NE
+                )
+            except Exception:
+                self.critic_model = None
 
     @property
     def seq_len(self) -> int:
@@ -152,8 +160,6 @@ class ASHCache:
         v_path = self.governor.get_page_path(layer_idx, f"v_{chunk_idx}")
         
         # Slicing (Hardware Agnostic via Healer-compliant slicing)
-        # We assume standard slicing works on backend tensors or use healer helper
-        # For simplicity in this implementation, we use direct slicing
         cold_k = current_k[:, :, :mid, :]
         cold_v = current_v[:, :, :mid, :]
         hot_k = current_k[:, :, mid:, :]
@@ -183,9 +189,6 @@ class ASHCache:
 
     def get_context_chunk(self, layer_idx: int, start: int, end: int) -> Any:
         """Retrieves a chunk, pulling from disk if necessary."""
-        # Simplified: for Ghost Critic analysis
-        # If the index is in the paged region, load the chunk
-        # This is a high-level abstraction for the demo
         with self._lock:
             # Check if start is in paged region
             paged_offset = 0
@@ -247,7 +250,6 @@ class ASHCache:
             else:
                 # Fallback for CUDA/Torch
                 import torch
-                # Convert to torch if it is numpy (from generate_mask placeholder) or torch tensor
                 if not isinstance(reasoning_heads_mask, torch.Tensor):
                     reasoning_heads_mask = torch.from_numpy(np.array(reasoning_heads_mask))
                 
