@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mlx-ash-kv"
-version = "8.2.4"
+version = "8.2.5"
 description = "Asynchronous Self-Healing KV Cache for Silicon-Native LLMs by GDI Nexus"
 readme = "README.md"
 requires-python = ">=3.10"

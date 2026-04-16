@@ -2,7 +2,7 @@
 
 [![Hardware](https://img.shields.io/badge/Hardware-Apple%20Silicon%20%26%20NVIDIA-blue)](#)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green)](#)
-[![Version](https://img.shields.io/badge/Version-8.2.4--beta-emerald)](#)
+[![Version](https://img.shields.io/badge/Version-8.2.5--beta-emerald)](#)
 [![Company](https://img.shields.io/badge/Developed%20by-GDI%20Nexus-black)](https://gdinexus.com)
 
 **ASH-KV** (Asynchronous Self-Healing KV Cache) is a high-performance middleware layer designed for **Runtime Neural Integrity Enforcement**. It leverages silicon-native kernels to monitor the mathematical uncertainty of the Attention Manifold and surgically prunes logical drift at the hardware level.
@@ -18,38 +18,59 @@ Instead of heuristic text-scanning, ASH-KV monitors **Attention Varentropy**. By
 When drift is detected, ASH-KV executes a **Gaussian Penalty Mask** directly within the model's compute graph.
 *   **Apple Silicon**: Uses `@mx.compile` Fused Metal kernels for zero-latency mutation.
 *   **NVIDIA**: Uses PyTorch/CUDA-synchronized tensor operations.
-*   **Latency**: Measured at **< 0.9ms** on Apple M4 hardware (virtually 0% inference overhead).
-
-### ♾️ Dynamic NVMe Paging (Context Extension)
-ASH-KV breaks physical VRAM limitations by implementing an LRU-based paging system. "Cold" context chunks are offloaded to NVMe storage using zero-copy memory mapping, supporting 100k+ token windows on consumer-grade unified memory.
+*   **Latency**: Measured at **< 0.9ms** on Apple M4 hardware.
 
 ---
 
-## 🚀 Performance Benchmarks (M4 Pro)
-| Metric | Standard Cache | ASH-KV Protected |
-| :--- | :--- | :--- |
-| **Inference Latency** | 1.00x (Base) | 1.002x |
-| **Healing Mutation** | N/A | **0.85 ms** |
-| **Max Context (16GB)** | ~12k tokens | **100k+ tokens** (Paged) |
-| **Hallucination Rate** | Baseline | **~85% Reduction** (Zero-Shot) |
+## 📖 API Reference
+
+### `protect(model, sensitivity=0.85, critic_model_path=None)`
+Wraps an existing model with the ASH-KV Hypervisor.
+
+| Parameter | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `model` | `nn.Module` | Required | An MLX or PyTorch model instance. |
+| `sensitivity` | `float` | `0.85` | The drift threshold (0.0 to 1.0). Lower is stricter. |
+| `critic_model_path` | `str` | `None` | Optional path to a CoreML `.mlpackage` for ANE offloading. |
+
+**Returns**: `(protected_model, cache, adapter, proxies)`
+*   `cache`: The `ASHCache` instance managing the manifold.
+*   `adapter`: The `AdaptiveSensitivity` agent for dynamic scaling.
+*   `proxies`: A list of KV-cache proxies to be passed to the model's forward pass.
 
 ---
 
-## 🛠️ Implementation
+## 🚀 Usage with `mlx-lm`
 
-### 1. Installation
-```bash
-pip install mlx-ash-kv
-```
+ASH-KV is designed to be a drop-in upgrade for the `mlx-lm` ecosystem.
 
-### 2. Integration
 ```python
-from mlx_ash_kv.api import protect
+from mlx_lm import load
+from mlx_ash_kv.api import protect, generate_stream
 
-# Wrap existing MLX or PyTorch model
-# The HAL (Hardware Abstraction Layer) auto-detects silicon
-protected_model, cache, shield, proxies = protect(model, sensitivity=0.85)
+# 1. Load your model natively
+model, tokenizer = load("mlx-community/Meta-Llama-3-8B-Instruct-4bit")
+
+# 2. Apply the ASH-KV Shield
+model, cache, adapter, proxies = protect(model, sensitivity=0.85)
+
+# 3. Stream with Real-Time Healing
+gen = generate_stream(model, tokenizer, cache, proxies, prompt="Explain quantum gravity.")
+
+for token, health_score in gen:
+    print(token, end="", flush=True)
+    # health_score < 0.1 indicates an ASH-KV intervention occurred
 ```
+
+---
+
+## 📊 Benchmarks & Reproducibility
+Our performance claims are verifiable using the included benchmarking suite.
+```bash
+ash-kv install    # Hardware Stress Test
+ash-kv benchmark  # Run 100-case Latency/Integrity suite
+```
+Scripts are located in `scripts/publish_benchmarks.py`. Methodology uses `time.perf_counter_ns()` to measure the Fused Metal Kernel overhead.
 
 ---
 
@@ -57,7 +78,7 @@ protected_model, cache, shield, proxies = protect(model, sensitivity=0.85)
 The **Hardware Abstraction Layer** ensures the same code runs across disparate architectures:
 *   **`MLXHealer`**: Fused Metal operations for Apple Silicon.
 *   **`CudaHealer`**: Synchronized PyTorch operations for NVIDIA.
-*   **`UniversalTensorCritic`**: Pure mathematical manifold evaluation.
+*   **`UniversalTensorCritic`**: Zero-shot mathematical manifold evaluation.
 
 ---
 
