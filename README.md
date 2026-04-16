@@ -1,10 +1,23 @@
+---
+title: MLX-ASH-KV
+emoji: ⚡
+colorFrom: green
+colorTo: gray
+sdk: gradio
+sdk_version: 5.16.0
+app_file: app.py
+pinned: false
+license: apache-2.0
+---
+
 # ASH-KV: The Self-Healing Middleware for LLMs
 
 [![Hardware](https://img.shields.io/badge/Hardware-Apple%20Silicon%20%26%20NVIDIA-blue)](#)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green)](#)
-[![Version](https://img.shields.io/badge/Version-8.2.0-emerald)](#)
+[![Version](https://img.shields.io/badge/Version-8.2.1-emerald)](#)
+[![Company](https://img.shields.io/badge/Developed%20by-GDI%20Nexus-black)](https://gdinexus.com)
 
-**ASH-KV** is a high-performance, hardware-aware middleware layer designed to provide **Runtime Integrity** for Large Language Models. By surgically intercepting and correcting the KV cache at the silicon level, it prevents logical drift and clinical hallucinations with zero detectable latency.
+**ASH-KV** is a high-performance, hardware-aware middleware layer designed for **High-Assurance Inference**. Developed by **GDI Nexus**, it surgically intercepts and corrects the KV cache at the silicon level, preventing logical drift and clinical hallucinations with zero detectable latency.
 
 ---
 
@@ -28,7 +41,7 @@ Break the VRAM ceiling. ASH-KV dynamically offloads "Cold" context chunks to NVM
 
 ### 1. Installation
 ```bash
-pip install .
+pip install mlx-ash-kv
 ```
 
 ### 2. Corporate Integration (3 Lines of Code)
@@ -55,8 +68,14 @@ ASH-KV comes with a professional CLI for systems verification and benchmarking.
 
 ---
 
-## 🔬 Scientific Foundation
-ASH-KV implements **Asynchronous Self-Healing** protocols that offload hallucination detection to secondary silicon (like the ANE or secondary GPU cores), ensuring the main generation loop remains unobstructed.
+## 🔬 About GDI Nexus
+**GDI Nexus** is a premier AI infrastructure firm. We are the architects of the AI-first era, blending deep data science with elite cloud orchestration. Our mission is to empower global enterprises with autonomous, reliable, and structurally resilient AI ecosystems.
+
+### Locations
+*   **USA (HQ)**: Woodbridge, VA 22191
+*   **India**: Fingerpost Kandal, Udagamandalam, Tamil Nadu 643001
+
+**Contact**: [contactus@gdinexus.com](mailto:contactus@gdinexus.com) | [www.gdinexus.com](https://gdinexus.com)
 
 ---
 
@@ -64,4 +83,4 @@ ASH-KV implements **Asynchronous Self-Healing** protocols that offload hallucina
 **ASH-KV is a hardware-level reliability layer designed to assist professionals. It is NOT a substitute for professional medical or legal judgment. All AI-generated outputs, even those "healed" by ASH-KV, must be verified by qualified human professionals before making clinical or legal decisions.**
 
 ---
-Built for the future of mission-critical Agentic Reasoning.
+© 2026 GDI Nexus Software Solutions LLP. All rights reserved.

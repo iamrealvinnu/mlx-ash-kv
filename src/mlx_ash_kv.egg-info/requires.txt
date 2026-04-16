@@ -2,7 +2,12 @@ mlx>=0.18.0
 numpy
 rich
 coremltools
+gradio
+mlx-lm
+torch
 
 [dev]
 pytest
 black
+build
+twine

@@ -1,8 +1,8 @@
 mlx>=0.18.0
 mlx-lm
 gradio
-plotly
 numpy
 rich
 coremltools
 torch
+huggingface_hub
