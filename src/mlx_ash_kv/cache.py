@@ -236,14 +236,25 @@ class ASHCache:
             
             reasoning_heads_mask = mask[0, :self.num_heads // 2, 0, :]
             
-            # Using healer for take but still need mx for indexing logic on Mac
-            import mlx.core as mx
-            max_penalty = mx.max(reasoning_heads_mask, axis=0)
-            mx.eval(max_penalty)
-            keep_indices = mx.nonzero(max_penalty > threshold)[0]
-            mx.eval(keep_indices)
+            # Use healer for indexing logic based on backend
+            if self.healer.__class__.__name__ == "MLXHealer":
+                import mlx.core as mx
+                max_penalty = mx.max(reasoning_heads_mask, axis=0)
+                mx.eval(max_penalty)
+                keep_indices = mx.nonzero(max_penalty > threshold)[0]
+                mx.eval(keep_indices)
+                new_seq_len = keep_indices.size
+            else:
+                # Fallback for CUDA/Torch
+                import torch
+                # Convert to torch if it is numpy (from generate_mask placeholder) or torch tensor
+                if not isinstance(reasoning_heads_mask, torch.Tensor):
+                    reasoning_heads_mask = torch.from_numpy(np.array(reasoning_heads_mask))
+                
+                max_penalty, _ = torch.max(reasoning_heads_mask, dim=0)
+                keep_indices = (max_penalty > threshold).nonzero().squeeze()
+                new_seq_len = keep_indices.shape[0] if keep_indices.dim() > 0 else 0
             
-            new_seq_len = keep_indices.size
             tokens_freed = self.seq_len - new_seq_len
             if tokens_freed <= 0:
                 self.strikes.clear()

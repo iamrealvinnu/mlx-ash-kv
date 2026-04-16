@@ -1,8 +1,14 @@
 import gradio as gr
 import time
 import os
-import mlx.core as mx
-from mlx_lm import load
+
+try:
+    import mlx.core as mx
+    from mlx_lm import load
+    HAS_MLX = True
+except ImportError:
+    HAS_MLX = False
+
 from mlx_ash_kv.api import protect, generate_stream
 
 # Global state for the model
@@ -16,6 +22,9 @@ class ModelHub:
         self.model_path = "mlx-community/Meta-Llama-3-8B-Instruct-4bit"
 
     def ensure_loaded(self):
+        if not HAS_MLX:
+            raise RuntimeError("MLX is not installed. This Space requires Apple Silicon hardware for native inference. Falling back to architectural overview.")
+
         if self.model is None:
             print(f"--- Loading Real Model: {self.model_path} ---")
             try:
@@ -26,7 +35,7 @@ class ModelHub:
                     critic_model_path="models/mock_critic.mlpackage"
                 )
             except Exception as e:
-                raise RuntimeError(f"Failed to load model. Ensure 'mlx-lm' and 'huggingface_hub' are installed. Error: {e}")
+                raise RuntimeError(f"Failed to load model. Error: {e}")
 
 hub = ModelHub()
 

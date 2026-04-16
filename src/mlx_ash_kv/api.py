@@ -2,7 +2,13 @@ import threading
 import time
 import os
 from typing import Any, Optional, List, Tuple, Generator
-import mlx.core as mx
+
+try:
+    import mlx.core as mx
+    HAS_MLX = True
+except ImportError:
+    HAS_MLX = False
+
 from .cache import ASHCache
 from .critic import ClinicalRulesEngine
 
@@ -13,8 +19,9 @@ class ASHCacheProxy:
         self.layer_idx = layer_idx
         self.offset = 0
 
-    def update_and_fetch(self, keys: mx.array, values: mx.array) -> Tuple[mx.array, mx.array]:
+    def update_and_fetch(self, keys: Any, values: Any) -> Tuple[Any, Any]:
         k, v = self.hypervisor.update_layer(self.layer_idx, keys, values)
+        # Sequence length indexing (compatible with MLX and PyTorch)
         self.offset = k.shape[2]
         return k, v
 
@@ -22,7 +29,7 @@ class ASHCacheProxy:
 _patched = False
 def patch_mlx_lm(ash_cache: ASHCache):
     global _patched
-    if _patched: return
+    if _patched or not HAS_MLX: return
     
     import mlx_lm.models.base as base_models
     from mlx_lm.models.base import create_causal_mask
@@ -33,7 +40,6 @@ def patch_mlx_lm(ash_cache: ASHCache):
         if ash_cache.strikes:
             seq_len = keys.shape[2]
             custom_mask = ash_cache.get_mask()
-            # Ensure mask is on the right device/dtype
             custom_mask = mx.array(custom_mask, dtype=queries.dtype)
             
             if isinstance(mask, str) and mask == "causal":
